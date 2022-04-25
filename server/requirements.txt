@@ -1,0 +1,5 @@
+cryptography==36.0.2
+pymongo==4.1.0
+dnspython==2.2.1
+schedule==1.1.0
+flask==2.1.1

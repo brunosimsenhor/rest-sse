@@ -1,0 +1,62 @@
+version: "3.9" # optional since v1.27.0
+services:
+  db:
+    image: mongo:5.0.6
+    restart: always
+    environment:
+      - MONGO_INITDB_DATABASE=surveys
+      - "TZ=America/Sao_Paulo"
+    volumes:
+      - ./db:/data/db/
+
+  server:
+    build: ./server
+    depends_on:
+      - "db"
+    command: "python -u server.py"
+    environment:
+      - "TZ=America/Sao_Paulo"
+      - "DB_URI=mongodb://db:27017/surveys"
+    volumes:
+      - ./server/server.py:/opt/server/server.py
+
+  cron:
+    build: .
+    depends_on:
+      - "db"
+    command: "python -u cron.py"
+    environment:
+      - "TZ=America/Sao_Paulo"
+      - "DB_URI=mongodb://db:27017/surveys"
+    volumes:
+      - ./cron.py:/app/cron.py
+
+  client_1:
+    build: ./client
+    depends_on:
+      - "server"
+    command: "sleep infinity"
+    environment:
+      - "TZ=America/Sao_Paulo"
+    volumes:
+      - ./client:/opt/client
+
+  client_2:
+    build: ./client
+    depends_on:
+      - "server"
+    command: "sleep infinity"
+    environment:
+      - "TZ=America/Sao_Paulo"
+    volumes:
+      - ./client:/opt/client
+
+  client_3:
+    build: ./client
+    depends_on:
+      - "server"
+    command: "sleep infinity"
+    environment:
+      - "TZ=America/Sao_Paulo"
+    volumes:
+      - ./client:/opt/client
