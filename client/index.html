@@ -43,9 +43,32 @@ DA==
     </div>
 
     <div class="container" id="survey-list-container">
-      <h2>Lista de enquetes</h2>
-
-      <table></table>
+      <div class="row">
+        <div class="col-8">
+          <h2>Lista de enquetes</h2>
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">Nome</th>
+                <th scope="col">Criador</th>
+                <th scope="col">Votar</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td scope="col" colspan="3">Nenhuma enquete encontrada</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        
+        <div class="col-4">
+          <h2>Notificações</h2>
+          <ul id="notifications-list"></ul>
+        </div>
+      </div>
     </div>
 
     <!-- Dependencies -->

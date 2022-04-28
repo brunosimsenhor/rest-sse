@@ -1,4 +1,5 @@
 /client/node_modules
-/client/user.json
-/client/private.pem
+/client/data/*
+/server/__pycache__
 /db/*
+/data/*

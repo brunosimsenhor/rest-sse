@@ -1,7 +1,7 @@
 // const crypto = require('crypto');
 const crypto = window.crypto.subtle;
 
-const baseURL = 'http://localhost:5001/';
+const baseURL = 'http://localhost:5001';
 
 const axiosInstance = axios.create({
     baseURL,
@@ -11,30 +11,9 @@ const axiosInstance = axios.create({
     },
     transformRequest: [async function (data, headers) {
         try {
-            const { _id: id } = storage.getItem('userData');
-
-            const payload = JSON.stringify(data);
-            // const payload = id;
-
-            const privateKey = await buildPrivateKey();
-            // const sign = await crypto.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, str2ab(payload));
-
-            // console.log({ privateKey })
-
-            // const signingHeaders = await buildSigningHeaders(id);
-            // console.log(signingHeaders)
-
-            // for (i in signingHeaders) {
-            //     headers[i] = signingHeaders[i];
-            // }
-
-            headers['X-User-ID'] = id;
-            headers['X-Signature'] = "banzai"
-            // headers['X-Signature'] = _arrayBufferToBase64(sign);
-
-            // console.log(headers['X-Signature'])
-
-            console.log('oiasd')
+            for (i in signingHeaders) {
+                headers[i] = signingHeaders[i];
+            }
 
         } catch(err) {
             console.error(err)
@@ -56,7 +35,7 @@ const storage = {
     }
 };
 
-function _arrayBufferToBase64(buffer) {
+function abtb64(buffer) {
     var binary = '';
     var bytes = new Uint8Array(buffer);
     var len = bytes.byteLength;
@@ -106,18 +85,22 @@ async function buildPrivateKey() {
     return cryptoPrivateKey;
 }
 
-async function buildSigningHeaders(payload) {
-    const { _id: id } = storage.getItem('userData');
-    const privateKey = await buildPrivateKey();
+let signingHeaders = null;
 
-    console.log({ privateKey });
+async function buildSigningHeaders() {
+    if (signingHeaders === null) {
+        const { _id: id } = storage.getItem('userData');
+        const privateKey = await buildPrivateKey();
 
-    let asdf = await crypto.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, str2ab(JSON.stringify(payload)));
+        let sign = await crypto.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, str2ab(id));
 
-    return {
-        'X-User-ID': id,
-        'X-Signature': _arrayBufferToBase64(),
-    };
+        signingHeaders = {
+            'X-User-ID': id,
+            'X-Signature': abtb64(sign),
+        };
+    }
+
+    return signingHeaders
 }
 
 const app = {
@@ -135,18 +118,16 @@ const app = {
 
     login: async function () {
         const { _id: id } = storage.getItem('userData');
-
-        // const headers = await buildSigningHeaders();
-
-        // console.log({ headers })
-
         const { data } = await axiosInstance.post('/login', { id });
-        // const { data } = await axiosInstance.post('/login', { id }, {
-        //     headers,
-        // });
 
         return data;
-    }
+    },
+
+    getSurveys: async function() {
+        const { data } = await axiosInstance.get('/surveys');
+
+        return data;
+    },
 };
 
 // Forms
@@ -166,12 +147,77 @@ async function switchView(page) {
     switch (page) {
         case 'survey-list':
             surveyListView.classList.remove(hiddenClass);
+            buildSurveys();
             break;
+
         case 'register':
         default:
             registerView.classList.remove(hiddenClass);
             break;
     }
+}
+
+const notifications = [];
+const notificationList = document.querySelector('#notifications-list');
+
+// Notifications
+function addNotification(event) {
+    if (notifications.unshift(event) > 5) {
+        notifications.splice(-1, 1);
+    }
+
+    notificationList.innerHTML = '';
+
+    for (const i in notifications) {
+        const element = document.createElement('li');
+        const { data, type } = notifications[i];
+
+        element.innerHTML = `<b>${type}:</b> ${data}`;
+
+        notificationList.appendChild(element);
+    }
+}
+
+const surveys = [];
+const surveyTable = document.querySelector('#survey-table');
+
+function addSurveyToTable({ name, createdBy }) {
+    const element = document.createElement('tr');
+    const { data, type } = notifications[i];
+
+    element.innerHTML = `<td>${name}</td><td>${createdBy}</td><td><a href="javascript:void(0);">Votar</a></td>`;
+
+    notificationList.appendChild(element);
+}
+
+async function buildSurveys() {
+    const surveys = await app.getSurveys();
+
+    if (surveys.length > 0) {
+        surveyTable.querySelector('tfoot').classList.add(hiddenClass);
+    } else {
+        surveyTable.querySelector('tfoot').classList.remove(hiddenClass);
+    }
+
+    for (const i in surveys) {
+        addSurveyToTable(surveys[i]);
+    }
+
+    const source = new EventSource(`${baseURL}/events`, {
+        headers: await buildSigningHeaders(),
+    });
+
+    source.onmessage = (event) => {
+        const parsedData = JSON.parse(event.data);
+    };
+
+    source.addEventListener('new-survey', addNotification);
+    source.addEventListener('ping', addNotification);
+
+    source.addEventListener('error', (e) => {
+        console.log('incoming event:', 'error');
+        console.error(e);
+    });
 }
 
 (async () => {
@@ -180,26 +226,14 @@ async function switchView(page) {
     console.info('[registered]', alreadyRegistered);
 
     if (alreadyRegistered) {
+        await buildSigningHeaders();
+
         // login
         try {
-            const loginResponse = await app.login();
+            // we do not need the response, just to be successful
+            await app.login();
 
-            console.log({ loginResponse });
             switchView('survey-list');
-
-            // let source = new EventSource(`${baseURL}/events`, {
-            //     headers: buildSigningHeaders()
-            // });
-
-            // source.addEventListener('*', (e) => {
-            //     console.log('incoming event:', e.type);
-            //     console.info(e.data);
-            // });
-
-            // source.addEventListener('error', (e) => {
-            //     console.log('incoming event:', 'error');
-            //     console.error(e);
-            // });
 
         } catch (err) {
             console.error('[login][error]', err);
