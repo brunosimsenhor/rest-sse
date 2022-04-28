@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="/deps/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <title>JavaScript client</title>
+  </head>
+  <body>
+    <div class="container" id="register-container">
+      <h2>Registrar</h2>
+      <form id="register-form">
+        <div class="form-floating mb-3">
+          <input required type="text" class="form-control" id="register-name" name="name" placeholder="Nome" value="Bruno#1">
+          <label for="register-email">Nome</label>
+        </div>
+        <div class="form-floating mb-3">
+          <textarea required class="form-control" id="register-private-key" name="privateKey" style="font-family:monospace;height: 150px;">-----BEGIN PRIVATE KEY-----
+MIHuAgEAMBAGByqGSM49AgEGBSuBBAAjBIHWMIHTAgEBBEIBR28XwIc8dMorP8S4
+jEr6YK/rKt5Hi7xFjrkYqoGftERAGZAASjcY7hsBTPk0Z8yYGpOi/N+ujT4HdGcq
+ao+axQShgYkDgYYABAAUlX/uRS8T99u0FegttXTQMUcez26fWne+j150l0+sdNzv
+bBbYi29XvUQEsXjtpKWxkmXk+WuCVS8UjyCGLbrQlQGX7u9Fuuw5CFgDu5IAnvu2
+usU2R4ZvQwnmMm99+xH5TabLh1tXSqcH4MKW2itnUWkhYbCWkiq9EFhqmcraovDm
+DA==
+-----END PRIVATE KEY-----</textarea>
+          <label for="register-private-key">Chave privada:</label>
+          <span class="form-text text-muted fw-lighter">Começa com: -----BEGIN DSA PRIVATE KEY-----</span>
+        </div>
+        <div class="form-floating mb-3">
+          <textarea required class="form-control" id="register-public-key" name="publicKey" style="font-family:monospace;height:150px;">ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAAUlX/uRS8T99u0FegttXTQMUcez26fWne+j150l0+sdNzvbBbYi29XvUQEsXjtpKWxkmXk+WuCVS8UjyCGLbrQlQGX7u9Fuuw5CFgDu5IAnvu2usU2R4ZvQwnmMm99+xH5TabLh1tXSqcH4MKW2itnUWkhYbCWkiq9EFhqmcraovDmDA== bruno.correia@WePayouts-MacBook-Pro.local</textarea>
+          <label for="register-public-key">Chave pública:</label>
+          <span class="form-text text-muted fw-lighter">Começa com: ssh-dss</span>
+        </div>
+
+        <div class="col-12">
+          <button class="btn btn-primary" type="submit">Submit form</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="container" id="survey-list-container">
+      <h2>Lista de enquetes</h2>
+
+      <table></table>
+    </div>
+
+    <!-- Dependencies -->
+    <script src="/deps/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+    <script src="/deps/axios.min.js" integrity="sha384-6Cr0MivX9+iyLgAmoFkKaS7oaRwoCINwyk9BTO3v2Fu30opL5kcDNgsiKx8sAxcm" crossorigin="anonymous"></script>
+
+    <!-- Application script -->
+    <script src="/app.js" crossorigin="anonymous"></script>
+  </body>
+</html>
