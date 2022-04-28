@@ -345,21 +345,6 @@ class SurveyRegister(object):
             print('[voted][failure][{0}][{1}]'.format(client['_id'], survey['_id']))
             return False, 'invalid signature'
 
-class Events
-    queues = {}
-
-    def __init__(self):
-        pass
-
-    def ensure_queue(self, client_id):
-        if not client_id in self.queues:
-            self.queues[client_id] = queue.Queue()
-
-        return self.queues[client_id]
-
-    def append(self, client_id, message):
-        self.ensure_queue(client_id).put(message)
-
 # Helpers
 def format_sse(self, data: str, event=None) -> str:
     msg = f'data: {data}\n\n'
