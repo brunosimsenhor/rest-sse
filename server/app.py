@@ -13,7 +13,9 @@ from flask import Flask, request, Response, abort, jsonify
 from flask_cors import CORS
 
 # cryptography
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.primitives.serialization import load_ssh_public_key
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
 
 app = Flask(__name__)
 CORS(app)
@@ -158,7 +160,11 @@ def verify_signature(raw_public_key, message, signature):
     return True # fake
 
     # loading its public key from database
-    public_key = load_pem_public_key(raw_public_key.encode('utf-8'))
+    public_key = load_ssh_public_key(raw_public_key.encode('utf-8'))
+    decoded_signature = base64.b64decode(signature)
+
+    app.logger.debug('decoded_signature')
+    app.logger.debug(decoded_signature)
 
     try:
         # verify a signature against the public key
@@ -296,7 +302,7 @@ def survey_endpoint() -> tuple[list, int]:
 
 def list_surveys():
     client_id = request.headers.get('X-User-ID', '')
-    # signature = request.headers.get('X-Signature', '')
+    signature = request.headers.get('X-Signature', '')
 
     # finding the client on the database
     client = db.find_client(client_id)
@@ -304,6 +310,10 @@ def list_surveys():
     # if the client was not found
     if not client:
         return {'message': 'client not found'}, 400
+
+    # if verify_signature(client['public_key'], _id.encode('utf-8'), base64.b64decode(signature)):
+    if not verify_signature(client['public_key'], client_id.encode('utf-8'), signature):
+        return {'message': 'unauthorized'}, 403
 
     surveys = []
 
@@ -356,6 +366,7 @@ def create_survey() -> tuple[list, int]:
 @app.route('/survey/<survey_id>', methods=['GET'])
 def consult_survey(survey_id):
     client_id = request.headers.get('X-User-ID', '')
+    signature = request.headers.get('X-Signature', '')
 
     client = db.find_client(client_id)
     survey = db.find_survey(survey_id)
