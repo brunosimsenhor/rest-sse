@@ -362,23 +362,21 @@ def consult_survey(survey_id):
 
     # if the client was not found
     if not client:
-        return False, 'client not found'
+        return {'data': 'client not found'}, 400
 
     # if the survey was not found
     if not survey:
-        return False, 'survey not found'
-
-    signature = serpent.tobytes(signature)
+        return {'data': 'survey not found'}, 400
 
     if not self.verify_signature(client, client_id.encode('utf-8'), signature):
         print('[login][failure][{0}]'.format(_id))
-        return False, 'invalid signature'
+        return {'data': 'invalid signature'}, 400
 
     # checking if the client has voted this survey
     voted = self.votes_collection.count_documents({ 'client_id': client_id, 'survey_id': survey_id }) > 0
 
     if not voted:
-        return False, 'client vote was not registered in the survey'
+        return {'data': 'client vote was not registered in the survey'}, 400
 
     # populating data to return to client
     survey['votes'] = {}
@@ -390,7 +388,7 @@ def consult_survey(survey_id):
 
         survey['votes'][vote['option']].append(self.client_collection.find_one({ '_id': vote['client_id'] })['name'])
 
-    return True, survey
+    return {'data': survey}, 200
 
 @app.route('/vote', methods=['POST'])
 # def vote_survey_option(self, _id: str, survey_id: str, option: str, signature) -> list:
