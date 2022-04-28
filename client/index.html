@@ -11,6 +11,8 @@
     <title>JavaScript client</title>
   </head>
   <body>
+    <h1 class="visibilly-hidden" id="name-header"></h1>
+
     <div class="container" id="register-container">
       <h2>Registrar</h2>
       <form id="register-form">
@@ -37,36 +39,161 @@ DA==
         </div>
 
         <div class="col-12">
-          <button class="btn btn-primary" type="submit">Submit form</button>
+          <button class="btn btn-primary" type="submit">Salvar</button>
+
+          <button class="btn btn-primary" type="submit">Salvar</button>
         </div>
       </form>
     </div>
 
-    <div class="container" id="survey-list-container">
+    <div class="container">
       <div class="row">
         <div class="col-8">
-          <h2>Lista de enquetes</h2>
-          <table class="table">
-            <thead>
-              <tr>
-                <th scope="col">Nome</th>
-                <th scope="col">Criador</th>
-                <th scope="col">Votar</th>
-              </tr>
-            </thead>
-            <tbody>
-            </tbody>
-            <tfoot>
-              <tr>
-                <td scope="col" colspan="3">Nenhuma enquete encontrada</td>
-              </tr>
-            </tfoot>
-          </table>
+          <div class="container" id="survey-list-container">
+            <div class="row">
+              <h2>Lista de enquetes</h2>
+            </div>
+            <div class="row">
+              <button class="btn btn-primary" onclick="javascript:showSurveyForm();">Criar enquete</button>
+            </div>
+            <div class="row">
+              <table class="table" id="survey-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Nome</th>
+                    <th scope="col">Local</th>
+                    <th scope="col">Criador</th>
+                    <th scope="col">Votar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td scope="col" colspan="3">Nenhuma enquete encontrada</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div class="row" id="survey-form-container">
+            <div class="container">
+              <h2>Nova enquete</h2>
+              <form id="survey-form">
+                <!-- title -->
+                <div class="form-floating mb-3">
+                  <input required type="text" class="form-control" id="survey-title" name="title" placeholder="Título" value="Aniversário do Bruno">
+                  <label for="survey-title">Título</label>
+                </div>
+
+                <!-- local -->
+                <div class="form-floating mb-3">
+                  <input required type="text" class="form-control" id="survey-local" name="local" placeholder="Título" value="Salão de festas">
+                  <label for="survey-local">Título</label>
+                </div>
+
+                <!-- datetime -->
+                <div class="form-floating mb-3">
+                  <input required type="datetime-local" class="form-control" id="survey-due-date" name="dueDate" placeholder="Data limite" value="2022-04-28T18:00">
+                  <label for="survey-due-date">Data limite</label>
+                </div>
+
+                <!-- options -->
+                <h6>Opções</h6>
+
+                <div class="form-floating mb-3">
+                  <input required type="datetime-local" class="form-control" id="survey-options-1" name="options1" placeholder="Opção #1" value="2022-12-14T10:00">
+                  <label for="survey-options-1">Opção #1</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                  <input required type="datetime-local" class="form-control" id="survey-options-2" name="options2" placeholder="Opção #2" value="2022-12-14T10:30">
+                  <label for="survey-options-2">Opção #2</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                  <input required type="datetime-local" class="form-control" id="survey-options-3" name="options3" placeholder="Opção #3" value="2022-12-14T11:00">
+                  <label for="survey-options-3">Opção #3</label>
+                </div>
+
+                <!-- buttons -->
+                <div class="col-12">
+                  <div class="d-grid gap-2 d-md-flex">
+                    <button class="btn btn-primary" type="submit">Salvar</button>
+                    <button class="btn btn-outline-danger" onclick="javascript:closeSurveyForm();" type="reset">Cancelar</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="row" id="vote-form-container">
+            <div class="container">
+              <h2>Votar</h2>
+              <form id="vote-form">
+                <!-- _id -->
+                <input type="hidden" name="_id" value="" id="vote-id" />
+
+                <!-- title -->
+                <div class="mb-3 row">
+                  <label for="staticEmail" class="col-sm-2 col-form-label">Título</label>
+                  <div class="col-sm-10">
+                    <input type="text" readonly class="form-control-plaintext" id="vote-title" value="">
+                  </div>
+                </div>
+
+                <!-- local -->
+                <div class="mb-3 row">
+                  <label for="staticEmail" class="col-sm-2 col-form-label">Local</label>
+                  <div class="col-sm-10">
+                    <input type="text" readonly class="form-control-plaintext" id="vote-local" value="">
+                  </div>
+                </div>
+
+                <!-- created by -->
+                <div class="mb-3 row">
+                  <label for="staticEmail" class="col-sm-2 col-form-label">Criado por</label>
+                  <div class="col-sm-10">
+                    <input type="text" readonly class="form-control-plaintext" id="vote-created-by" value="">
+                  </div>
+                </div>
+
+                <!-- options -->
+                <h6>Opções</h6>
+
+                <div class="form-floating mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="chosenOption" id="vote-option-1" checked>
+                    <label class="form-check-label" for="vote-option-1"></label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="chosenOption" id="vote-option-2">
+                    <label class="form-check-label" for="vote-option-2"></label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="chosenOption" id="vote-option-3">
+                    <label class="form-check-label" for="vote-option-3"></label>
+                  </div>
+                </div>
+
+                <!-- buttons -->
+                <div class="col-12">
+                  <div class="d-grid gap-2 d-md-flex">
+                    <button class="btn btn-primary" name="vote-submit" type="submit">Salvar</button>
+                    <button class="btn btn-outline-danger" onclick="javascript:closeVoteForm();" type="reset">Cancelar</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
-        
+
         <div class="col-4">
           <h2>Notificações</h2>
-          <ul id="notifications-list"></ul>
+          <ul id="notifications-list" class="list-group">
+            <li class="list-group-item text-muted">Nenhuma notificação</li>
+          </ul>
         </div>
       </div>
     </div>

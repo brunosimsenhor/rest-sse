@@ -9,27 +9,13 @@ const axiosInstance = axios.create({
     headers: {
       'Content-Type': 'application/json'
     },
-    transformRequest: [async function (data, headers) {
-        try {
-            for (i in signingHeaders) {
-                headers[i] = signingHeaders[i];
-            }
-
-        } catch(err) {
-            console.error(err)
-        }
-
-        return data;
-    }, ...axios.defaults.transformRequest],
 });
 
 const storage = {
     _storage: window.sessionStorage,
-
     getItem: function (k) {
         return JSON.parse(this._storage.getItem(k));
     },
-
     setItem: function (k, v) {
         return this._storage.setItem(k, JSON.stringify(v));
     }
@@ -97,47 +83,61 @@ async function buildSigningHeaders() {
         signingHeaders = {
             'X-User-ID': id,
             'X-Signature': abtb64(sign),
+            'Content-type': 'application/json'
         };
+
+        for (const i in signingHeaders) {
+            axiosInstance.defaults.headers.common[i] = signingHeaders[i];
+        }
+
+        // axiosInstance.defaults.headers.common['X-User-ID'] = id;
+        // axiosInstance.defaults.headers.common['X-Signature'] = abtb64(sign);
+        // axiosInstance.defaults.headers.common['Content-type'] = 'application/json';
     }
 
     return signingHeaders
 }
 
 const app = {
-    register: async function (name, privateKey, publicKey) {
+    register: async function (name, publicKey) {
         const { data } = await axiosInstance.post('/register', { name, publicKey });
-
-        storage.setItem('userData', data);
-        storage.setItem('privateKey', privateKey);
-        storage.setItem('publicKey', publicKey);
-
-        switchView('survey-list');
 
         return data;
     },
 
-    login: async function () {
-        const { _id: id } = storage.getItem('userData');
-        const { data } = await axiosInstance.post('/login', { id });
-
-        return data;
+    postLogin: async function () {
+        return axiosInstance.post('/login', {});
     },
 
     getSurveys: async function() {
-        const { data } = await axiosInstance.get('/surveys');
+        return axiosInstance.get('/surveys')
+            .then(({ data }) => data)
+            .then(({ data }) => data);
+    },
 
-        return data;
+    postSurveys: async function(title, local, dueDate, options) {
+        return await axiosInstance.post('/surveys', JSON.stringify({ title, local, dueDate, options }))
+            .then(({ data }) => data);
+    },
+
+    postVote: async function(surveyId, chosenOption) {
+        return await axiosInstance.post('/vote', JSON.stringify({ surveyId, chosenOption }))
+            .then(({ data }) => data);
     },
 };
 
 // Forms
 const registerForm = document.getElementById('register-form');
+const surveyForm = document.getElementById('survey-form');
+const voteForm = document.getElementById('vote-form');
 
 // Views
 const registerView = document.getElementById('register-container');
 const surveyListView = document.getElementById('survey-list-container');
+const surveyFormView = document.getElementById('survey-form-container');
+const voteFormView = document.getElementById('vote-form-container');
 
-const allViews = [registerView, surveyListView];
+const allViews = [registerView, surveyListView, surveyFormView, voteFormView];
 
 const hiddenClass = 'visually-hidden';
 
@@ -148,6 +148,14 @@ async function switchView(page) {
         case 'survey-list':
             surveyListView.classList.remove(hiddenClass);
             buildSurveys();
+            break;
+
+        case 'survey-form':
+            surveyFormView.classList.remove(hiddenClass);
+            break;
+
+        case 'vote-form':
+            voteFormView.classList.remove(hiddenClass);
             break;
 
         case 'register':
@@ -161,8 +169,10 @@ const notifications = [];
 const notificationList = document.querySelector('#notifications-list');
 
 // Notifications
-function addNotification(event) {
-    if (notifications.unshift(event) > 5) {
+function addNotification({ type, text }) {
+    // notificationList.querySelector('.text-muted').classList.add(hiddenClass);
+
+    if (notifications.unshift({ type, text }) > 5) {
         notifications.splice(-1, 1);
     }
 
@@ -170,9 +180,10 @@ function addNotification(event) {
 
     for (const i in notifications) {
         const element = document.createElement('li');
-        const { data, type } = notifications[i];
+        const { type, text } = notifications[i];
 
-        element.innerHTML = `<b>${type}:</b> ${data}`;
+        element.classList.add('list-group-item');
+        element.innerHTML = `<b>${type}:</b> ${text}`;
 
         notificationList.appendChild(element);
     }
@@ -181,13 +192,23 @@ function addNotification(event) {
 const surveys = [];
 const surveyTable = document.querySelector('#survey-table');
 
-function addSurveyToTable({ name, createdBy }) {
+function addSurveyToTable({ _id, title, local, createdBy, closed, options }) {
     const element = document.createElement('tr');
-    const { data, type } = notifications[i];
+    const btn = document.createElement('a');
+    btn.classList = 'btn btn-sm btn-primary';
+    btn.onclick = () => voteSurvey({ _id, title, local, createdBy, closed, options });
+    btn.innerHTML = 'Votar';
 
-    element.innerHTML = `<td>${name}</td><td>${createdBy}</td><td><a href="javascript:void(0);">Votar</a></td>`;
+    let html = `<td>${title}</td><td>${local}</td><td>${createdBy}</td><td class="btn-container"></td>`;
 
-    notificationList.appendChild(element);
+    if (closed) {
+        // btn.classList.add('disabled');
+    }
+
+    element.innerHTML = html;
+    element.querySelector('.btn-container').append(btn);
+
+    surveyTable.querySelector('tbody').appendChild(element);
 }
 
 async function buildSurveys() {
@@ -199,24 +220,84 @@ async function buildSurveys() {
         surveyTable.querySelector('tfoot').classList.remove(hiddenClass);
     }
 
+    surveyTable.querySelector('tbody').innerHTML = '';
+
     for (const i in surveys) {
         addSurveyToTable(surveys[i]);
     }
+}
 
-    const source = new EventSource(`${baseURL}/events`, {
-        headers: await buildSigningHeaders(),
+function showSurveyForm() {
+    switchView('survey-form');
+}
+
+function closeSurveyForm() {
+    switchView('survey-list');
+}
+
+function closeVoteForm() {
+    switchView('survey-list');
+}
+
+function voteSurvey({ _id, title, local, createdBy, closed, options }) {
+    // console.log({ _id, title, local, createdBy, closed, options })
+
+    document.querySelector('label[for=vote-option-1]').innerHTML = options[0];
+    document.querySelector('label[for=vote-option-2]').innerHTML = options[1];
+    document.querySelector('label[for=vote-option-3]').innerHTML = options[2];
+
+    document.querySelector('#vote-id').value = _id;
+
+    document.querySelector('#vote-title').value = title;
+    document.querySelector('#vote-local').value = local;
+    document.querySelector('#vote-created-by').value = createdBy;
+
+    document.querySelector('#vote-option-1').value = options[0];
+    document.querySelector('#vote-option-2').value = options[1];
+    document.querySelector('#vote-option-3').value = options[2];
+
+    if (closed) {
+        document.querySelector('[name=vote-submit]').classList.add('disabled');
+    } else {
+        document.querySelector('[name=vote-submit]').classList.remove('disabled');
+    }
+
+    switchView('vote-form');
+}
+
+let alreadyLogged = false;
+
+async function onLogin() {
+    if (alreadyLogged) {
+        return;
+    }
+
+    console.log('onLogin')
+
+    alreadyLogged = true;
+
+    const { _id } = storage.getItem('userData');
+
+    const source = new window.EventSource(`${baseURL}/events/${_id}`);
+
+    source.addEventListener('new-survey', ({ data }) => {
+        const d = JSON.parse(data);
+        addNotification({ type: 'Nova enquete', text: d.title });
+        addSurveyToTable(d);
     });
 
-    source.onmessage = (event) => {
-        const parsedData = JSON.parse(event.data);
-    };
+    source.addEventListener('closed-survey', ({ data }) => {
+        const d = JSON.parse(data);
+        addNotification({ type: 'Enquete encerrada', text: d.title });
+        addSurveyToTable(d);
+    });
 
-    source.addEventListener('new-survey', addNotification);
-    source.addEventListener('ping', addNotification);
+    source.addEventListener('ping', ({ data }) => {
+        addNotification({ type: 'Ping', text: data });
+    });
 
     source.addEventListener('error', (e) => {
-        console.log('incoming event:', 'error');
-        console.error(e);
+        console.error('event source error', e);
     });
 }
 
@@ -229,33 +310,104 @@ async function buildSurveys() {
         await buildSigningHeaders();
 
         // login
-        try {
-            // we do not need the response, just to be successful
-            await app.login();
-
-            switchView('survey-list');
-
-        } catch (err) {
-            console.error('[login][error]', err);
-
-            switchView('register');
-        }
+        // we do not need the response, just to be successful
+        app.postLogin()
+            .then(() => {
+                onLogin();
+            })
+            .then(() => {
+                switchView('survey-list');
+            })
+            .catch((err) => {
+                console.error('[login][error]', err);
+                switchView('register');
+            });
 
     } else {
         // // register
         switchView('register');
     }
 
-    registerForm.addEventListener('submit', function (e) {
+    registerForm.addEventListener('submit', async function (e) {
         e.preventDefault();
 
-        const data = new FormData(registerForm);
+        const formData = new FormData(registerForm);
 
         // data
-        const name = data.get('name');
-        const privateKey = data.get('privateKey');
-        const publicKey = data.get('publicKey');
+        const name = formData.get('name');
+        const privateKey = formData.get('privateKey');
+        const publicKey = formData.get('publicKey');
 
-        app.register(name, privateKey, publicKey);
+        await app.register(name, publicKey)
+            .then((data) => {
+                console.log({ data })
+                storage.setItem('userData', data);
+                storage.setItem('privateKey', privateKey);
+                storage.setItem('publicKey', publicKey);
+            })
+            .then(() => {
+                registerForm.reset();
+            })
+            .then(() => {
+                switchView('survey-list');
+            })
+            .then(() => {
+                onLogin();
+            })
+            .then(() => {
+                return buildSigningHeaders();
+            });
     });
-})()
+
+    surveyForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(surveyForm);
+
+        // data
+        const title = formData.get('title');
+        const dueDate = formData.get('dueDate');
+        const local = formData.get('local');
+        const options = [
+            formData.get('options1'),
+            formData.get('options2'),
+            formData.get('options3'),
+        ];
+
+        // console.log('formData', { title, local, dueDate, options });
+
+        await app.postSurveys(title, local, dueDate, options)
+            .then(({ data }) => {
+                console.log({ data })
+            })
+            .then(() => {
+                surveyForm.reset();
+            })
+            .then(() => {
+                switchView('survey-list');
+            });
+    });
+
+    voteForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(voteForm);
+
+        // data
+        const surveyId = formData.get('_id');
+        const chosenOption = formData.get('chosenOption');
+
+        // console.log('formData', { title, local, dueDate, options });
+
+        await app.postVote(surveyId, chosenOption)
+            .then(({ status }) => {
+                alert(status)
+            })
+            .then(() => {
+                voteForm.reset();
+            })
+            .then(() => {
+                switchView('survey-list');
+            });
+    });
+})();
