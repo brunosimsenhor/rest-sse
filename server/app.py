@@ -130,13 +130,10 @@ class Events():
 
         return self.queues[client_id]
 
-    def get_queues(self):
-        return self.queues.values()
-
     def put(self, client_id: str, type: str, data: str):
         msg = f'event: {type}\ndata: {data}\n\n'
 
-        self.ensure_queue(client_id).put(msg)
+        self.ensure_queue(client_id).put(msg, block=True)
 
     def get(self, client_id: str):
         return self.ensure_queue(client_id).get()
@@ -149,7 +146,7 @@ class Events():
 
     def publish(self, type: str, data: str):
         for client in db.list_logged_clients():
-            app.logger.info(client['_id'])
+            app.logger.info('[events][publish][{0}]'.format(client['_id']))
             self.put(client['_id'], type, data)
 
 events = Events()
@@ -207,10 +204,11 @@ def notify_clients_new_survey(survey: dict):
     return True
 
 def notify_clients_closed_survey(survey: dict):
-    client_ids = [i['client_id'] for i in db.votes_collection.find({ 'survey_id': survey['_id'] })]
+    s = dict(survey)
+    s['dueDate'] = str(s['dueDate'])
+    s['createdBy'] = db.find_client(s['createdBy'])['name']
 
-    for client_id in client_ids:
-        events.put(client_id, 'closed-survey', survey)
+    events.publish('closed-survey', json.dumps(s))
 
     return True
 
@@ -237,6 +235,15 @@ def register() -> tuple[list, int]:
 
     return client_data, 201
 
+
+# just ping
+@app.route('/ping', methods=['GET'])
+def ping():
+    data = 'pong {0}'.format(datetime.datetime.now())
+    events.publish('ping', data)
+
+    return {'message': data}, 200
+
 @app.route('/events/<client_id>')
 def subscribe(client_id):
     # client_id = request.headers.get('X-User-ID', '')
@@ -245,17 +252,21 @@ def subscribe(client_id):
     app.logger.debug('client_id: {0}'.format(client_id))
 
     def stream():
+        counter = 0
         events.put(client_id, "welcome", "connected")
 
         while True:
+            time.sleep(1)
             queue = events.ensure_queue(client_id)
 
-            if queue.empty():
-                # app.logger.debug('fila vazia')
-                time.sleep(0.1) # to not melt the processor down
-            else:
-                msg = queue.get()
-                yield msg
+            msg = ''
+            while not queue.empty():
+                counter += 1
+                msg += 'id: {0}\n\n{1}'.format(counter, queue.get())
+                queue.task_done()
+                app.logger.debug('[events][{0}] new qsize: {1}'.format(client_id, queue.qsize()))
+
+            yield msg
 
     return Response(stream(), content_type='text/event-stream')
 
@@ -279,17 +290,22 @@ def login() -> tuple[list, int]:
     app.logger.debug('client')
     app.logger.debug(client)
 
+    db.set_client_logged(client_id, True)
+
+    app.logger.info('[login][success][{0}]'.format(client_id))
+    return {'message': 'authorized'}, 200
+
     # if verify_signature(client['public_key'], _id.encode('utf-8'), base64.b64decode(signature)):
-    if verify_signature(client['public_key'], client_id.encode('utf-8'), signature):
-        db.set_client_logged(client_id, True)
+    # if verify_signature(client['public_key'], client_id.encode('utf-8'), signature):
+    #     db.set_client_logged(client_id, True)
 
-        app.logger.info('[login][success][{0}]'.format(client_id))
-        return {'message': 'authorized'}, 200
+    #     app.logger.info('[login][success][{0}]'.format(client_id))
+    #     return {'message': 'authorized'}, 200
 
-    # on invalid signature, we log it and return false
-    else:
-        app.logger.info('[login][failure][{0}]'.format(client_id))
-        return {'message': 'invalid signature'}, 401
+    # # on invalid signature, we log it and return false
+    # else:
+    #     app.logger.info('[login][failure][{0}]'.format(client_id))
+    #     return {'message': 'invalid signature'}, 401
 
 
 @app.route('/surveys', methods=['GET', 'POST'])
@@ -311,9 +327,9 @@ def list_surveys():
     if not client:
         return {'message': 'client not found'}, 400
 
-    # if verify_signature(client['public_key'], _id.encode('utf-8'), base64.b64decode(signature)):
-    if not verify_signature(client['public_key'], client_id.encode('utf-8'), signature):
-        return {'message': 'unauthorized'}, 403
+    # # if verify_signature(client['public_key'], _id.encode('utf-8'), base64.b64decode(signature)):
+    # if not verify_signature(client['public_key'], client_id.encode('utf-8'), signature):
+    #     return {'message': 'unauthorized'}, 403
 
     surveys = []
 
@@ -379,9 +395,9 @@ def consult_survey(survey_id):
     if not survey:
         return {'data': 'survey not found'}, 400
 
-    if not self.verify_signature(client, client_id.encode('utf-8'), signature):
-        print('[login][failure][{0}]'.format(_id))
-        return {'data': 'invalid signature'}, 400
+    # if not self.verify_signature(client, client_id.encode('utf-8'), signature):
+    #     print('[login][failure][{0}]'.format(_id))
+    #     return {'data': 'invalid signature'}, 400
 
     # checking if the client has voted this survey
     voted = self.votes_collection.count_documents({ 'client_id': client_id, 'survey_id': survey_id }) > 0
@@ -425,7 +441,8 @@ def vote_survey_option():
 
     # if the survey is already closed
     if survey['closed'] == True:
-        return {'data': 'survey already closed'}, 400
+        status_text = 'survey already closed'
+        # return {'status': 'survey already closed'}, 200
 
     # the option do not belongs to this survey
     if option not in survey['options']:
@@ -452,14 +469,6 @@ def vote_survey_option():
     else:
         print('[voted][failure][{0}][{1}]'.format(client['_id'], survey['_id']))
         return {'status':'invalid signature'}, 400
-
-# just ping
-@app.route('/ping', methods=['GET'])
-def ping():
-    data = 'pong {0}'.format(datetime.datetime.now())
-    events.publish('ping', data)
-
-    return {'message': data}, 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

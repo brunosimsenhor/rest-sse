@@ -201,10 +201,6 @@ function addSurveyToTable({ _id, title, local, createdBy, closed, options }) {
 
     let html = `<td>${title}</td><td>${local}</td><td>${createdBy}</td><td class="btn-container"></td>`;
 
-    if (closed) {
-        // btn.classList.add('disabled');
-    }
-
     element.innerHTML = html;
     element.querySelector('.btn-container').append(btn);
 
@@ -256,11 +252,11 @@ function voteSurvey({ _id, title, local, createdBy, closed, options }) {
     document.querySelector('#vote-option-2').value = options[1];
     document.querySelector('#vote-option-3').value = options[2];
 
-    if (closed) {
-        document.querySelector('[name=vote-submit]').classList.add('disabled');
-    } else {
-        document.querySelector('[name=vote-submit]').classList.remove('disabled');
-    }
+    // if (closed) {
+    //     document.querySelector('[name=vote-submit]').classList.add('disabled');
+    // } else {
+    //     document.querySelector('[name=vote-submit]').classList.remove('disabled');
+    // }
 
     switchView('vote-form');
 }
@@ -289,7 +285,6 @@ async function onLogin() {
     source.addEventListener('closed-survey', ({ data }) => {
         const d = JSON.parse(data);
         addNotification({ type: 'Enquete encerrada', text: d.title });
-        addSurveyToTable(d);
     });
 
     source.addEventListener('ping', ({ data }) => {
